@@ -20,6 +20,13 @@ const {
 } = require('discord.js');
 require('dotenv').config();
 const fs = require('fs');
+const path = require('path');
+
+// Create transcripts directory if it doesn't exist
+const TRANSCRIPTS_DIR = './transcripts';
+if (!fs.existsSync(TRANSCRIPTS_DIR)) {
+    fs.mkdirSync(TRANSCRIPTS_DIR, { recursive: true });
+}
 
 const client = new Client({
     intents: [
@@ -75,13 +82,16 @@ function initializeServer(guildId) {
         serverData[guildId] = {
             tickets: {},
             staffMembers: [],
+            staffRoles: [],
             nextTicketNumber: 1,
             settings: {
                 maxTicketsPerUser: MAX_TICKETS_PER_USER,
                 ticketCategoryName: TICKET_CATEGORY_NAME,
                 logsChannelName: LOGS_CHANNEL_NAME,
                 dashboardChannelName: DASHBOARD_CHANNEL_NAME,
-                ticketPrefix: TICKET_PREFIX
+                ticketPrefix: TICKET_PREFIX,
+                autoCreateStaffRole: false,
+                staffRoleName: 'Support Staff'
             }
         };
         saveData();
@@ -106,9 +116,71 @@ function generateTicketId(guildId) {
 }
 
 // Check if user is staff
-function isStaff(guildId, userId) {
+function isStaff(guildId, userId, guild) {
     const server = getServerData(guildId);
-    return server.staffMembers.includes(userId);
+    
+    // Check if user is in staff members list
+    if (server.staffMembers.includes(userId)) {
+        return true;
+    }
+    
+    // Check if user has any staff role
+    if (guild) {
+        const member = guild.members.cache.get(userId);
+        if (member) {
+            return server.staffRoles.some(roleId => member.roles.cache.has(roleId));
+        }
+    }
+    
+    return false;
+}
+
+// Generate and save transcript
+async function generateTranscript(channel, ticketId) {
+    try {
+        const messages = await channel.messages.fetch({ limit: 1000 });
+        const sortedMessages = messages.sort((a, b) => a.createdAt - b.createdAt);
+        
+        let transcript = `📝 Ticket Transcript - #${ticketId}\n`;
+        transcript += `📅 Generated: ${new Date().toLocaleString()}\n`;
+        transcript += `💬 Channel: ${channel.name} (${channel.id})\n`;
+        transcript += `===============================================\n\n`;
+        
+        sortedMessages.forEach(msg => {
+            const timestamp = msg.createdAt.toLocaleString();
+            const author = msg.author.tag;
+            let content = msg.content;
+            
+            // Handle attachments
+            if (msg.attachments.size > 0) {
+                const attachments = msg.attachments.map(att => att.url).join('\n');
+                content += `\n📎 Attachments:\n${attachments}`;
+            }
+            
+            // Handle embeds
+            if (msg.embeds.length > 0) {
+                const embedCount = msg.embeds.length;
+                content += `\n📄 ${embedCount} embed${embedCount > 1 ? 's' : ''} included`;
+            }
+            
+            transcript += `[${timestamp}] ${author}: ${content}\n`;
+        });
+        
+        // Save transcript file
+        const fileName = `transcript-${ticketId}-${Date.now()}.txt`;
+        const filePath = path.join(TRANSCRIPTS_DIR, fileName);
+        fs.writeFileSync(filePath, transcript, 'utf8');
+        
+        return {
+            content: transcript,
+            fileName: fileName,
+            filePath: filePath,
+            messageCount: messages.size
+        };
+    } catch (error) {
+        console.error('❌ Error generating transcript:', error);
+        return null;
+    }
 }
 
 // Register Slash Commands
@@ -194,12 +266,15 @@ const commands = [
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption(option =>
             option.setName('setting')
-                .setDescription('Setting to configure')                .setRequired(true)
+                .setDescription('Setting to configure')
+                .setRequired(true)
                 .addChoices(
                     { name: 'Max Tickets Per User', value: 'max_tickets' },
                     { name: 'Ticket Category Name', value: 'category_name' },
                     { name: 'Logs Channel Name', value: 'logs_channel' },
-                    { name: 'Ticket Prefix', value: 'ticket_prefix' }
+                    { name: 'Ticket Prefix', value: 'ticket_prefix' },
+                    { name: 'Staff Role Name', value: 'staff_role_name' },
+                    { name: 'Auto-Create Staff Role', value: 'auto_create_staff_role' }
                 )
         )
         .addIntegerOption(option =>
@@ -211,6 +286,37 @@ const commands = [
             option.setName('value_string')
                 .setDescription('String value for the setting')
                 .setRequired(false)
+        )
+        .addBooleanOption(option =>
+            option.setName('value_boolean')
+                .setDescription('Boolean value for the setting')
+                .setRequired(false)
+        ),
+    new SlashCommandBuilder()
+        .setName('addstaffrole')
+        .setDescription('Add a role as a staff role for ticket access')
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .addRoleOption(option =>
+            option.setName('role')
+                .setDescription('Role to add as staff role')
+                .setRequired(true)
+        ),
+    new SlashCommandBuilder()
+        .setName('removestaffrole')
+        .setDescription('Remove a role from the staff roles list')
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .addRoleOption(option =>
+            option.setName('role')
+                .setDescription('Role to remove from staff roles')
+                .setRequired(true)
+        ),
+    new SlashCommandBuilder()
+        .setName('transcript')
+        .setDescription('Get transcript of a ticket (staff only)')
+        .addStringOption(option =>
+            option.setName('ticketid')
+                .setDescription('Ticket ID to get transcript for')
+                .setRequired(true)
         ),
 ].map(command => command.toJSON());
 
@@ -480,15 +586,23 @@ client.on('interactionCreate', async (interaction) => {
                     });
                 }
 
-                const messages = await channel.messages.fetch({ limit: 100 });
-                const transcript = messages.reverse().map(m => 
-                    `[${m.createdAt.toLocaleString()}] ${m.author.tag}: ${m.content}`
-                ).join('\n');
-
-                console.log(`📝 Transcript of Ticket #${ticket.id}:\n${transcript}`);
+                const transcript = await generateTranscript(channel, ticket.id);
+                
+                if (transcript) {
+                    console.log(`📝 Transcript of Ticket #${ticket.id} saved to ${transcript.fileName}`);
+                    
+                    ticket.transcript = {
+                        fileName: transcript.fileName,
+                        filePath: transcript.filePath,
+                        messageCount: transcript.messageCount,
+                        generatedAt: new Date().toISOString()
+                    };
+                }
 
                 ticket.status = 'closed';
-                ticket.closedAt = new Date().toISOString();                ticket.reason = reason;
+                ticket.closedAt = new Date().toISOString();
+                ticket.closedBy = interaction.user.id;
+                ticket.reason = reason;
                 server.tickets[channel.id] = ticket;
                 saveData();
 
@@ -600,7 +714,7 @@ client.on('interactionCreate', async (interaction) => {
             }
 
             if (commandName === 'reopen') {
-                if (!isStaff(guildId, interaction.user.id)) {
+                if (!isStaff(guildId, interaction.user.id, interaction.guild)) {
                     return interaction.reply({ 
                         content: '⚠️ Only staff members can use this command!',
                         ephemeral: true 
@@ -635,7 +749,18 @@ client.on('interactionCreate', async (interaction) => {
                             id: client.user.id,
                             allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
                         },
-                    ],                });
+                        // Add permissions for all staff roles
+                        ...server.staffRoles.map(roleId => ({
+                            id: roleId,
+                            allow: [
+                                PermissionFlagsBits.ViewChannel,
+                                PermissionFlagsBits.SendMessages,
+                                PermissionFlagsBits.AttachFiles,
+                                PermissionFlagsBits.ReadMessageHistory
+                            ],
+                        }))
+                    ],
+                });
 
                 ticket.status = 'reopened';
                 ticket.channelId = channel.id;
@@ -759,6 +884,87 @@ client.on('interactionCreate', async (interaction) => {
                     ephemeral: true 
                 });
             }
+
+            if (commandName === 'addstaffrole') {
+                const role = interaction.options.getRole('role');
+                
+                if (server.staffRoles.includes(role.id)) {
+                    return interaction.reply({ 
+                        content: '⚠️ This role is already a staff role!',
+                        ephemeral: true 
+                    });
+                }
+
+                server.staffRoles.push(role.id);
+                saveData();
+
+                await interaction.reply({ 
+                    content: `✅ Role ${role} has been added as a staff role!`,
+                    ephemeral: true 
+                });
+                console.log(`➕ Staff role added: ${role.name} (${role.id})`);
+            }
+
+            if (commandName === 'removestaffrole') {
+                const role = interaction.options.getRole('role');
+                
+                const index = server.staffRoles.indexOf(role.id);
+                if (index === -1) {
+                    return interaction.reply({ 
+                        content: '⚠️ This role is not a staff role!',
+                        ephemeral: true 
+                    });
+                }
+
+                server.staffRoles.splice(index, 1);
+                saveData();
+
+                await interaction.reply({ 
+                    content: `✅ Role ${role} has been removed from staff roles!`,
+                    ephemeral: true 
+                });
+                console.log(`➖ Staff role removed: ${role.name} (${role.id})`);
+            }
+
+            if (commandName === 'transcript') {
+                if (!isStaff(guildId, interaction.user.id, interaction.guild)) {
+                    return interaction.reply({ 
+                        content: '⚠️ Only staff members can use this command!',
+                        ephemeral: true 
+                    });
+                }
+
+                const ticketId = interaction.options.getString('ticketid');
+                const ticket = Object.values(server.tickets).find(t => t.id === ticketId);
+
+                if (!ticket) {
+                    return interaction.reply({ 
+                        content: '⚠️ Ticket not found!',
+                        ephemeral: true 
+                    });
+                }
+
+                if (ticket.transcript) {
+                    const transcriptPath = ticket.transcript.filePath;
+                    if (fs.existsSync(transcriptPath)) {
+                        await interaction.reply({ 
+                            content: `📄 Transcript for Ticket #${ticketId} (${ticket.transcript.messageCount} messages):`,
+                            files: [transcriptPath],
+                            ephemeral: true 
+                        });
+                    } else {
+                        return interaction.reply({ 
+                            content: '⚠️ Transcript file not found!',
+                            ephemeral: true 
+                        });
+                    }
+                } else {
+                    return interaction.reply({ 
+                        content: '⚠️ No transcript available for this ticket!',
+                        ephemeral: true 
+                    });
+                }
+            }
         }
 
         if (interaction.isButton()) {
@@ -880,15 +1086,22 @@ client.on('interactionCreate', async (interaction) => {
                         ephemeral: true 
                     });
                 }
-                                const messages = await interaction.channel.messages.fetch({ limit: 100 });
-                const transcript = messages.reverse().map(m => 
-                    `[${m.createdAt.toLocaleString()}] ${m.author.tag}: ${m.content}`
-                ).join('\n');
-
-                console.log(`📝 Transcript of Ticket #${ticket.id}:\n${transcript}`);
+                                const transcript = await generateTranscript(interaction.channel, ticket.id);
+                
+                if (transcript) {
+                    console.log(`📝 Transcript of Ticket #${ticket.id} saved to ${transcript.fileName}`);
+                    
+                    ticket.transcript = {
+                        fileName: transcript.fileName,
+                        filePath: transcript.filePath,
+                        messageCount: transcript.messageCount,
+                        generatedAt: new Date().toISOString()
+                    };
+                }
 
                 ticket.status = 'closed';
                 ticket.closedAt = new Date().toISOString();
+                ticket.closedBy = interaction.user.id;
                 ticket.reason = 'Closed by user';
                 server.tickets[interaction.channel.id] = ticket;
                 saveData();
@@ -943,7 +1156,7 @@ client.on('interactionCreate', async (interaction) => {
                     });
                 }
 
-                if (!isStaff(guildId, interaction.user.id) && ticket.userId !== interaction.user.id) {
+                if (!isStaff(guildId, interaction.user.id, interaction.guild) && ticket.userId !== interaction.user.id) {
                     return interaction.reply({ 
                         content: '⚠️ Only staff or the ticket owner can reopen this ticket!',
                         ephemeral: true 
@@ -1044,7 +1257,12 @@ client.on('interactionCreate', async (interaction) => {
                         status: 'open',
                         createdAt: new Date().toISOString(),
                         reason: null,
-                        closedAt: null
+                        closedAt: null,
+                        closedBy: null,
+                        transcript: null,
+                        messages: [],
+                        participants: [userId],
+                        lastActivity: new Date().toISOString()
                     };
 
                     server.tickets[channel.id] = ticketData;
@@ -1112,15 +1330,22 @@ client.on('interactionCreate', async (interaction) => {
                     });
                 }
 
-                const messages = await interaction.channel.messages.fetch({ limit: 100 });
-                const transcript = messages.reverse().map(m => 
-                    `[${m.createdAt.toLocaleString()}] ${m.author.tag}: ${m.content}`
-                ).join('\n');
-
-                console.log(`📝 Transcript of Ticket #${ticket.id}:\n${transcript}`);
+                const transcript = await generateTranscript(interaction.channel, ticket.id);
+                
+                if (transcript) {
+                    console.log(`📝 Transcript of Ticket #${ticket.id} saved to ${transcript.fileName}`);
+                    
+                    ticket.transcript = {
+                        fileName: transcript.fileName,
+                        filePath: transcript.filePath,
+                        messageCount: transcript.messageCount,
+                        generatedAt: new Date().toISOString()
+                    };
+                }
 
                 ticket.status = 'closed';
                 ticket.closedAt = new Date().toISOString();
+                ticket.closedBy = interaction.user.id;
                 ticket.reason = reason;
                 server.tickets[interaction.channel.id] = ticket;
                 saveData();
