@@ -2,21 +2,27 @@
   "name": "ticketmatics",
   "version": "1.0.0",
   "description": "A robust Discord ticket system bot",
-  "main": "index.js",
+  "main": "api/bot.js",
   "scripts": {
     "start": "node index.js",
+    "dev": "node index.js",
+    "vercel-build": "echo 'Build complete'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "discord",
     "bot",
     "ticket",
-    "support"
+    "support",
+    "vercel"
   ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "discord.js": "^14.22.1",
     "dotenv": "^17.2.1"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
