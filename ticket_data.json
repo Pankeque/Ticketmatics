@@ -1,0 +1,88 @@
+{
+  "1400111826695487488": {
+    "tickets": {
+      "1469506651500445878": {
+        "id": "0001",
+        "userId": "1396448355718004847",
+        "dept": "feature_requests",
+        "channelId": "1469506651500445878",
+        "status": "open",
+        "createdAt": "2026-02-07T01:34:47.921Z",
+        "reason": null,
+        "closedAt": null
+      },
+      "1469507286560145408": {
+        "id": "0002",
+        "userId": "1396448355718004847",
+        "dept": "feature_requests",
+        "channelId": "1469507286560145408",
+        "status": "open",
+        "createdAt": "2026-02-07T01:37:19.328Z",
+        "reason": null,
+        "closedAt": null
+      },
+      "1469507415354380462": {
+        "id": "0003",
+        "userId": "1396448355718004847",
+        "dept": "feature_requests",
+        "channelId": "1469507415354380462",
+        "status": "open",
+        "createdAt": "2026-02-07T01:37:50.106Z",
+        "reason": null,
+        "closedAt": null
+      },
+      "1469508056193826880": {
+        "id": "0004",
+        "userId": "1238222180140060752",
+        "dept": "feature_requests",
+        "channelId": "1469508056193826880",
+        "status": "open",
+        "createdAt": "2026-02-07T01:40:22.908Z",
+        "reason": null,
+        "closedAt": null
+      },
+      "1469508192714100889": {
+        "id": "0005",
+        "userId": "1221523443258753139",
+        "dept": "tech_support",
+        "channelId": "1469508192714100889",
+        "status": "open",
+        "createdAt": "2026-02-07T01:40:55.450Z",
+        "reason": null,
+        "closedAt": null
+      }
+    },
+    "staffMembers": [],
+    "nextTicketNumber": 6,
+    "settings": {
+      "maxTicketsPerUser": 3,
+      "ticketCategoryName": "🎫・Tickets",
+      "logsChannelName": "ticket-logs",
+      "dashboardChannelName": "ticket-dashboard",
+      "ticketPrefix": "ticket-"
+    }
+  },
+  "1443049407930040362": {
+    "tickets": {
+      "1469517234664767500": {
+        "id": "0001",
+        "userId": "1396448355718004847",
+        "dept": "tech_support",
+        "channelId": "1469517234664767500",
+        "status": "open",
+        "createdAt": "2026-02-07T02:16:51.222Z",
+        "reason": null,
+        "closedAt": null
+      }
+    },
+    "staffMembers": [],
+    "nextTicketNumber": 2,
+    "settings": {
+      "maxTicketsPerUser": 3,
+      "ticketCategoryName": "🎫・Tickets",
+      "logsChannelName": "ticket-logs",
+      "dashboardChannelName": "ticket-dashboard",
+      "ticketPrefix": "ticket-"
+    }
+  }
+}
