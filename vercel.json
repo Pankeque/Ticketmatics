@@ -1,21 +1,29 @@
 {
-  "version": 2,
-  "builds": [
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
     {
-      "src": "api/*.js",
-      "use": "@vercel/node"
+      "source": "/api/interactions",
+      "destination": "/api/interactions"
+    },
+    {
+      "source": "/api/register-commands",
+      "destination": "/api/register-commands"
+    },
+    {
+      "source": "/api/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/",
+      "destination": "/api/health"
     }
   ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/api/bot.js"
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "@vercel/node@3"
     }
-  ],
+  },
   "env": {
     "NODE_ENV": "production"
-  },
-  "github": {
-    "silent": true
   }
 }
