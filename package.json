@@ -1,35 +1,25 @@
 {
   "name": "ticketmatics",
   "version": "2.0.0",
-  "description": "A robust Discord ticket system bot with HTTP Interactions for Vercel serverless",
-  "main": "api/interactions.js",
+  "description": "A robust Discord ticket system bot",
+  "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node api/interactions.js",
-    "dev": "vercel dev",
-    "register": "node scripts/register-commands.js",
-    "vercel-build": "echo 'Build complete'",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "node index.js",
+    "register": "node scripts/register-commands.js"
   },
   "keywords": [
     "discord",
     "bot",
     "ticket",
-    "support",
-    "vercel",
-    "serverless",
-    "http-interactions"
+    "support"
   ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "discord.js": "^14.22.1",
-    "discord-interactions": "^4.1.1",
     "dotenv": "^17.2.1"
-  },
-  "optionalDependencies": {
-    "@vercel/kv": "^1.0.1",
-    "@upstash/redis": "^1.28.0"
   },
   "engines": {
     "node": ">=18.x"

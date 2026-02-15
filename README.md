@@ -1,182 +1,129 @@
-# Ticketmatics
+# 🎫 Ticketmatics
 
-A professional Discord ticket management system built for Vercel serverless deployment using HTTP Interactions.
+A professional Discord ticket management bot with a modern interface and robust features.
 
-## 🚀 Features
+## ✨ Features
 
-- **Serverless Architecture**: Fully compatible with Vercel's serverless functions
-- **HTTP Interactions**: Uses Discord's HTTP-based interactions instead of WebSocket connections
-- **Persistent Storage**: Supports Vercel KV, Upstash Redis, or in-memory fallback
-- **Multi-Server Support**: Each Discord server has its own isolated configuration
+- **Ticket System**: Create, manage, and track support tickets
 - **Staff Management**: Add/remove staff members and roles
-- **Ticket Categories**: Organize tickets by category (General, Technical, Billing, etc.)
-- **Dashboard & Statistics**: Real-time ticket statistics and management
+- **Categories**: Organize tickets by category (General, Technical, Billing, Report, Other)
+- **Dashboard**: Real-time statistics and ticket overview
+- **Transcripts**: View ticket history and details
+- **Auto Channel Management**: Automatic channel creation and permission handling
 
-## 📋 Prerequisites
+## 🚀 Deployment (Discloud)
+
+### Prerequisites
 
 - Node.js 18.x or higher
-- A Discord Application (Bot)
-- Vercel account (for deployment)
-- (Optional) Vercel KV or Upstash Redis for persistent storage
+- A Discord bot application
+- Discloud account
 
-## 🔧 Environment Variables
+### Setup
 
-Create a `.env` file with the following variables:
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/ticketmatics.git
+   cd ticketmatics
+   ```
 
-```env
-# Required
-DISCORD_TOKEN=your_bot_token_here
-CLIENT_ID=your_application_id_here
-DISCORD_PUBLIC_KEY=your_public_key_here
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-# Optional - For persistent storage
-KV_REST_API_URL=your_vercel_kv_url
-KV_REST_API_TOKEN=your_vercel_kv_token
+3. Create a `.env` file with your bot credentials:
+   ```env
+   DISCORD_TOKEN=your_bot_token
+   CLIENT_ID=your_client_id
+   DISCORD_PUBLIC_KEY=your_public_key
+   ```
 
-# OR use Upstash Redis
-UPSTASH_REDIS_REST_URL=your_upstash_url
-UPSTASH_REDIS_REST_TOKEN=your_upstash_token
+4. Deploy to Discloud:
+   - Upload your project to Discloud
+   - The `discloud.config` file contains the deployment settings
 
-# Optional - For faster command registration during development
-GUILD_ID=your_test_guild_id
+## 📋 Commands
 
-# Optional - Security for command registration endpoint
-REGISTER_SECRET=your_secret_here
+### Admin Commands
+
+| Command | Description |
+|---------|-------------|
+| `/setup` | Create the ticket panel in the current channel |
+| `/addstaff @member` | Add a member to the staff team |
+| `/removestaff @member` | Remove a member from the staff team |
+| `/addstaffrole @role` | Add a role as staff |
+| `/removestaffrole @role` | Remove a role from staff |
+| `/liststaff` | List all staff members and roles |
+| `/config <setting> <value>` | Configure ticket system settings |
+| `/stats` | View server ticket statistics |
+| `/dashboard` | View ticket dashboard |
+
+### Staff Commands
+
+| Command | Description |
+|---------|-------------|
+| `/closeticket #channel` | Close a ticket |
+| `/adduser @member` | Add a user to a ticket |
+| `/removeuser @member` | Remove a user from a ticket |
+| `/reopen <ticketid>` | Reopen a closed ticket |
+| `/transcript <ticketid>` | Get ticket transcript |
+
+### User Commands
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Show help information |
+
+## ⚙️ Configuration Options
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `max_tickets` | Maximum tickets per user | 3 |
+| `category_name` | Ticket category name | 🎫・Tickets |
+| `logs_channel` | Logs channel name | ticket-logs |
+| `ticket_prefix` | Ticket channel prefix | ticket- |
+| `staff_role_name` | Staff role name | Support Staff |
+| `auto_create_staff_role` | Auto-create staff role | false |
+
+## 📁 Project Structure
+
 ```
-
-## 🏗️ Architecture
-
-### HTTP Interactions vs WebSocket
-
-This bot uses Discord's HTTP Interactions endpoint instead of maintaining a persistent WebSocket connection. This is essential for serverless platforms like Vercel because:
-
-1. **No Persistent Connections**: Serverless functions are ephemeral and can't maintain WebSocket connections
-2. **Request-Response Model**: Discord sends interactions via HTTP POST requests
-3. **Stateless Design**: Each request is handled independently
-
-### File Structure
-
-```
-Ticketmatics/
-├── api/
-│   ├── interactions.js    # Main Discord interactions handler
-│   ├── register-commands.js # Command registration endpoint
-│   └── health.js          # Health check endpoint
+ticketmatics/
+├── index.js              # Main entry point
+├── handlers/
+│   └── interactions.js   # Interaction handler
 ├── lib/
-│   ├── commands.js        # Slash command definitions
-│   ├── storage.js         # Storage abstraction layer
-│   └── ticketManager.js   # Core ticket logic
-├── scripts/
-│   └── register-commands.js # Local command registration script
-├── vercel.json            # Vercel configuration
+│   ├── commands.js       # Slash command definitions
+│   ├── storage.js        # File-based storage
+│   └── ticketManager.js  # Ticket management logic
+├── data/                 # Data storage (auto-created)
+├── .env                  # Environment variables
+├── discloud.config       # Discloud configuration
 ├── package.json
 └── README.md
 ```
 
-## 🚀 Deployment
+## 🔧 Development
 
-### 1. Create Discord Application
+1. Start the bot:
+   ```bash
+   npm start
+   ```
 
-1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
-2. Create a new application
-3. Go to "Bot" section and create a bot
-4. Copy the token to `DISCORD_TOKEN`
-5. Go to "General Information" and copy:
-   - Application ID → `CLIENT_ID`
-   - Public Key → `DISCORD_PUBLIC_KEY`
+2. For development:
+   ```bash
+   npm run dev
+   ```
 
-### 2. Enable Interactions Endpoint
+## 📝 License
 
-1. In Discord Developer Portal, go to "General Information"
-2. Scroll to "Interactions Endpoint URL"
-3. Enter your Vercel deployment URL: `https://your-app.vercel.app/api/interactions`
-4. Save changes
-
-### 3. Deploy to Vercel
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-```
-
-### 4. Register Commands
-
-After deployment, register your slash commands:
-
-```bash
-# Using the API endpoint
-curl -X POST https://your-app.vercel.app/api/register-commands
-
-# Or locally
-npm run register
-```
-
-## 💻 Local Development
-
-```bash
-# Install dependencies
-npm install
-
-# Start local development server
-npm run dev
-
-# Register commands
-npm run register
-```
-
-## 📝 Commands
-
-| Command | Description | Permissions |
-|---------|-------------|-------------|
-| `/setup` | Create the ticket panel | Administrator |
-| `/dashboard` | View ticket statistics | Administrator |
-| `/stats` | View server statistics | Administrator |
-| `/addstaff` | Add a staff member | Administrator |
-| `/removestaff` | Remove a staff member | Administrator |
-| `/addstaffrole` | Add a staff role | Administrator |
-| `/removestaffrole` | Remove a staff role | Administrator |
-| `/liststaff` | List all staff | Administrator |
-| `/config` | Configure settings | Administrator |
-| `/help` | Show help information | Everyone |
-
-## 🔒 Security
-
-- All requests are verified using Discord's Ed25519 signature verification
-- Command registration endpoint can be protected with a secret
-- Staff-only actions are properly permission-checked
-
-## 📦 Storage Options
-
-### Vercel KV (Recommended for Vercel)
-
-1. Create a KV database in your Vercel project
-2. The environment variables are automatically set
-
-### Upstash Redis
-
-1. Create a Redis database at [Upstash](https://upstash.com)
-2. Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
-
-### In-Memory (Development Only)
-
-Without a persistent storage backend, data will be lost between function invocations. This is only suitable for development.
-
-## 🔄 Migration from WebSocket Bot
-
-If migrating from a traditional WebSocket-based bot:
-
-1. Remove all `client.on()` event listeners
-2. Convert interaction handlers to HTTP response format
-3. Replace file system storage with the storage abstraction layer
-4. Update command registration to use the new endpoint
-
-## 📄 License
-
-ISC
+ISC License
 
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📞 Support
+
+If you need help with Ticketmatics, please open an issue on GitHub.
